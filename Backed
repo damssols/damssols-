@@ -1,0 +1,42 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+
+const app = express();
+const port = 3000;
+
+// Sample whitelist of eligible addresses
+const whitelist = ["address1", "address2", "address3"];
+
+// Sample claiming period in milliseconds (7 days)
+const claimingPeriod = 7 * 24 * 60 * 60 * 1000;
+
+// Middleware to parse JSON bodies
+app.use(bodyParser.json());
+
+// Endpoint to handle airdrop claiming
+app.post('/claim-airdrop', (req, res) => {
+    const { address } = req.body;
+
+    // Check if the claimed address is whitelisted
+    if (!whitelist.includes(address)) {
+        return res.status(403).json({ error: "Address not eligible for airdrop" });
+    }
+
+    // Check if the claiming period has elapsed
+    const now = Date.now();
+    const claimingStart = /* Your claiming start date/time */;
+    if (now > claimingStart + claimingPeriod) {
+        return res.status(403).json({ error: "Claiming period has ended" });
+    }
+
+    // Mint tokens to the claiming address
+    // Implement your token minting logic here
+
+    // Return success response
+    return res.status(200).json({ message: "Airdrop claimed successfully" });
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+});
