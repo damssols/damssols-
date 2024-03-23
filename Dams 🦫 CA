@@ -1,0 +1,94 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+use ink_lang as ink;
+
+#[ink::contract]
+mod damssols_token {
+    #[ink(storage)]
+    pub struct DamssolsToken {
+        total_supply: Balance,
+        balances: ink_storage::collections::HashMap<AccountId, Balance>,
+    }
+
+    #[ink(event)]
+    pub struct Transfer {
+        #[ink(topic)]
+        from: Option<AccountId>,
+        #[ink(topic)]
+        to: Option<AccountId>,
+        value: Balance,
+    }
+
+    impl DamssolsToken {
+        #[ink(constructor)]
+        pub fn new(initial_supply: Balance) -> Self {
+            let mut balances = ink_storage::collections::HashMap::new();
+            let caller = Self::env().caller();
+            balances.insert(caller, initial_supply);
+
+            Self {
+                total_supply: initial_supply,
+                balances,
+            }
+        }
+
+        #[ink(message)]
+        pub fn total_supply(&self) -> Balance {
+            self.total_supply
+        }
+
+        #[ink(message)]
+        pub fn balance_of(&self, owner: AccountId) -> Balance {
+            self.balances.get(&owner).copied().unwrap_or(0)
+        }
+
+        #[ink(message)]
+        pub fn transfer(&mut self, to: AccountId, value: Balance) -> bool {
+            let caller = self.env().caller();
+            let caller_balance = self.balance_of(caller);
+
+            if caller_balance < value {
+                return false;
+            }
+
+            self.balances.insert(caller, caller_balance - value);
+
+            let receiver_balance = self.balance_of(to);
+            self.balances.insert(to, receiver_balance + value);
+
+            self.env().emit_event(Transfer {
+                from: Some(caller),
+                to: Some(to),
+                value,
+            });
+
+            true
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[ink::test]
+        fn it_creates_a_contract_with_initial_supply() {
+            let initial_supply = 1_000_000;
+            let damssols_token = DamssolsToken::new(initial_supply);
+            assert_eq!(damssols_token.total_supply(), initial_supply);
+        }
+
+        #[ink::test]
+        fn it_transfers_tokens() {
+            let initial_supply = 1_000_000;
+            let mut damssols_token = DamssolsToken::new(initial_supply);
+            let caller = account_id::Account::default();
+            let receiver = account_id::Account::from([0x1; 32]);
+
+            // Transfer tokens from caller to receiver
+            let transfer_amount = 100;
+            assert!(damssols_token.transfer(receiver, transfer_amount));
+            assert_eq!(damssols_token.balance_of(caller), initial_supply - transfer_amount);
+            assert_eq!(damssols_token.balance_of(receiver), transfer_amount);
+        }
+    }
+}
